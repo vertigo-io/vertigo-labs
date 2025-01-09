@@ -2,6 +2,7 @@ package io.vertigo.ai.llm.plugin.lc4j.document;
 
 import java.util.Collection;
 
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
@@ -19,8 +20,11 @@ public final class VFileDocumentLoader {
 	}
 
 	public static Document loadDocument(final VFile vFile) {
-
-		return DocumentLoader.load(new VFileDocumentSource(vFile), DEFAULT_DOCUMENT_PARSER);
+		try {
+			return DocumentLoader.load(new VFileDocumentSource(vFile), DEFAULT_DOCUMENT_PARSER);
+		} catch (final BlankDocumentException e) {
+			return new Document("Le fichier ne contient pas de texte.");
+		}
 	}
 
 	private static DocumentParser loadDocumentParser() {
