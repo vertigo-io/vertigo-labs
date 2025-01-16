@@ -81,7 +81,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 				.build();
 		String llmResponse;
 		try {
-			llmResponse = assistant.answer(prompt.prompt());
+			llmResponse = assistant.answer(prompt.instructions());
 		} catch (final Exception e) {
 			throw new VSystemException(e, e.getMessage());
 		}
