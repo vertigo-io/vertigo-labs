@@ -3,6 +3,7 @@ package io.vertigo.ai.llm.plugin.lc4j.document;
 import java.util.List;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
@@ -21,10 +22,21 @@ public final class Lc4jDocumentUtil {
 
 		// Here, we are ingesting our documents into the store.
 		// Under the hood, a lot of "magic" is happening, but we can ignore it for now.
+		final EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+				.documentSplitter(new DocumentByParagraphSplitter(1024, 0))
+				.embeddingStore(embeddingStore)
+				.build();
+		ingestor.ingest(documents);
+		/*
 		EmbeddingStoreIngestor.ingest(documents, embeddingStore);
+		 */
 
 		// Lastly, let's create a content retriever from an embedding store.
-		return EmbeddingStoreContentRetriever.from(embeddingStore);
+		return EmbeddingStoreContentRetriever.builder()
+				.embeddingStore(embeddingStore)
+				.maxResults(10)
+				.minScore(0.3d)
+				.build();
 	}
 
 }

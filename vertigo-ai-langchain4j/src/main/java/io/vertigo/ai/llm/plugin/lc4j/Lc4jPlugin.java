@@ -22,14 +22,12 @@ import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
-import org.commonmark.node.Node;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
-
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
+import io.vertigo.ai.impl.llm.VLlmResult;
 import io.vertigo.ai.impl.llm.VPrompt;
 import io.vertigo.ai.llm.LlmPlugin;
 import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
@@ -48,9 +46,6 @@ public final class Lc4jPlugin implements LlmPlugin {
 
 	private final ChatLanguageModel chatModel;
 
-	private final Parser parser;
-	private final HtmlRenderer renderer;
-
 	@Inject
 	public Lc4jPlugin(
 			@ParamValue("apiKey") final String apiKey) {
@@ -61,15 +56,13 @@ public final class Lc4jPlugin implements LlmPlugin {
 		chatModel = OpenAiChatModel.builder()
 				.apiKey(apiKey)
 				.modelName("gpt-4o-mini")
+				.temperature(0d)
 				.build();
 
-		// for markdown parsing
-		parser = Parser.builder().build();
-		renderer = HtmlRenderer.builder().omitSingleParagraphP(true).build();
 	}
 
 	@Override
-	public String promptOnFiles(final VPrompt prompt, final Stream<VFile> files) {
+	public VLlmResult promptOnFiles(final VPrompt prompt, final Stream<VFile> files) {
 		final List<Document> documents = files
 				.map(VFileDocumentLoader::loadDocument)
 				.toList();
@@ -79,15 +72,14 @@ public final class Lc4jPlugin implements LlmPlugin {
 				//.chatMemory(MessageWindowChatMemory.withMaxMessages(10)) // it should remember 10 latest messages
 				.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)) // it should have access to our documents
 				.build();
-		String llmResponse;
+		Result<String> llmResponse;
 		try {
-			llmResponse = assistant.answer(prompt.instructions());
+			llmResponse = assistant.rawAnswer(prompt.instructions());
 		} catch (final Exception e) {
 			throw new VSystemException(e, e.getMessage());
 		}
 
-		final Node document = parser.parse(llmResponse);
-		return renderer.render(document);
+		return new VLc4jResult(llmResponse);
 	}
 
 }
