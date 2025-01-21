@@ -67,11 +67,15 @@ public final class Lc4jPlugin implements LlmPlugin {
 				.map(VFileDocumentLoader::loadDocument)
 				.toList();
 
-		final Assistant assistant = AiServices.builder(Assistant.class)
+		final var assistantBuilder = AiServices.builder(Assistant.class)
 				.chatLanguageModel(chatModel) // it should use OpenAI LLM
-				//.chatMemory(MessageWindowChatMemory.withMaxMessages(10)) // it should remember 10 latest messages
-				.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)) // it should have access to our documents
-				.build();
+		//.chatMemory(MessageWindowChatMemory.withMaxMessages(10)) // it should remember 10 latest messages
+		;
+		if (!documents.isEmpty()) {
+			assistantBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
+		}
+		final Assistant assistant = assistantBuilder.build();
+
 		Result<String> llmResponse;
 		try {
 			llmResponse = assistant.rawAnswer(prompt.instructions());
