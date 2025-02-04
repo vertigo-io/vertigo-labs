@@ -8,9 +8,9 @@ import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.renderer.text.TextContentRenderer;
 
 import dev.langchain4j.service.Result;
-import io.vertigo.ai.impl.llm.VLlmResult;
+import io.vertigo.ai.llm.model.VLlmResult;
 
-public class VLc4jResult implements VLlmResult {
+public class Lc4jResult implements VLlmResult {
 
 	private static final Parser MD_PARSER = Parser.builder().build();
 	private static final HtmlRenderer HTML_RENDERER = HtmlRenderer.builder().omitSingleParagraphP(true).build();
@@ -18,7 +18,7 @@ public class VLc4jResult implements VLlmResult {
 
 	private final Result<String> result;
 
-	public VLc4jResult(final Result<String> result) {
+	public Lc4jResult(final Result<String> result) {
 		this.result = result;
 	}
 

@@ -23,7 +23,7 @@ public final class Lc4jDocumentUtil {
 		// Here, we are ingesting our documents into the store.
 		// Under the hood, a lot of "magic" is happening, but we can ignore it for now.
 		final EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-				.documentSplitter(new DocumentByParagraphSplitter(1024, 0))
+				.documentSplitter(new DocumentByParagraphSplitter(1024, 64))
 				.embeddingStore(embeddingStore)
 				.build();
 		ingestor.ingest(documents);

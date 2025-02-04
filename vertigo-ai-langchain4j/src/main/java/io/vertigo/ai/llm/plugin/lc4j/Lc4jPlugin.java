@@ -27,9 +27,10 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
-import io.vertigo.ai.impl.llm.VLlmResult;
-import io.vertigo.ai.impl.llm.VPrompt;
 import io.vertigo.ai.llm.LlmPlugin;
+import io.vertigo.ai.llm.model.LlmChat;
+import io.vertigo.ai.llm.model.VLlmResult;
+import io.vertigo.ai.llm.model.VPrompt;
 import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
 import io.vertigo.ai.llm.plugin.lc4j.document.VFileDocumentLoader;
 import io.vertigo.core.lang.Assertion;
@@ -83,7 +84,12 @@ public final class Lc4jPlugin implements LlmPlugin {
 			throw new VSystemException(e, e.getMessage());
 		}
 
-		return new VLc4jResult(llmResponse);
+		return new Lc4jResult(llmResponse);
+	}
+
+	@Override
+	public LlmChat newChat(final long newId, final Stream<VFile> files) {
+		return new Lc4jChat(newId, files.toList(), chatModel);
 	}
 
 }
