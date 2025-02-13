@@ -31,6 +31,7 @@ import io.vertigo.ai.llm.LlmPlugin;
 import io.vertigo.ai.llm.model.LlmChat;
 import io.vertigo.ai.llm.model.VLlmResult;
 import io.vertigo.ai.llm.model.VPrompt;
+import io.vertigo.ai.llm.model.VPromptContext;
 import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
 import io.vertigo.ai.llm.plugin.lc4j.document.VFileDocumentLoader;
 import io.vertigo.core.lang.Assertion;
@@ -69,9 +70,12 @@ public final class Lc4jPlugin implements LlmPlugin {
 				.toList();
 
 		final var assistantBuilder = AiServices.builder(Assistant.class)
-				.chatLanguageModel(chatModel) // it should use OpenAI LLM
-		//.chatMemory(MessageWindowChatMemory.withMaxMessages(10)) // it should remember 10 latest messages
-		;
+				.chatLanguageModel(chatModel);
+
+		final var context = prompt.getContext();
+		if (context.getPersona() != null) {
+			assistantBuilder.systemMessageProvider(s -> Lc4jUtils.getSystemMessageFromPersona(context.getPersona()).text());
+		}
 		if (!documents.isEmpty()) {
 			assistantBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
 		}
@@ -79,7 +83,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 
 		Result<String> llmResponse;
 		try {
-			llmResponse = assistant.rawAnswer(prompt.instructions());
+			llmResponse = assistant.rawAnswer(prompt.getInstructions());
 		} catch (final Exception e) {
 			throw new VSystemException(e, e.getMessage());
 		}
@@ -88,8 +92,8 @@ public final class Lc4jPlugin implements LlmPlugin {
 	}
 
 	@Override
-	public LlmChat newChat(final long newId, final Stream<VFile> files) {
-		return new Lc4jChat(newId, files.toList(), chatModel);
+	public LlmChat newChat(final Stream<VFile> files, final VPromptContext context) {
+		return new Lc4jChat(files.toList(), chatModel, context);
 	}
 
 }
