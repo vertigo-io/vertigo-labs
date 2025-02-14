@@ -34,7 +34,8 @@ public class Lc4jChat extends LlmChat {
 
 		final var assistantBuilder = AiServices.builder(Assistant.class)
 				.chatLanguageModel(chatModel) // it should use OpenAI LLM
-				.chatMemory(chatMemory);
+				.chatMemory(chatMemory)
+				.tools(new Lc4jTools());
 		if (!documents.isEmpty()) {
 			assistantBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
 		}

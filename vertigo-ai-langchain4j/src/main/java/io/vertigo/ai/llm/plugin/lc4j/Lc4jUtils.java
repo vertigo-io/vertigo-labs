@@ -14,11 +14,17 @@ public class Lc4jUtils {
 		if (persona.name() != null) {
 			personaInstructions.append("Your name is '" + persona.name() + "'.");
 		}
-		if (persona.instructions() != null) {
+		if (persona.role() != null) {
 			if (personaInstructions.length() > 0) {
 				personaInstructions.append("\n");
 			}
-			personaInstructions.append(persona.instructions());
+			personaInstructions.append(persona.role());
+		}
+		if (persona.context() != null) {
+			if (personaInstructions.length() > 0) {
+				personaInstructions.append("\n");
+			}
+			personaInstructions.append(persona.context());
 		}
 		if (persona.style() != null) {
 			if (personaInstructions.length() > 0) {
