@@ -18,7 +18,7 @@ public class Lc4jTools {
 			PegArithmeticsOperatorTerm.class, false);
 	private static final Function<String, Object> TERM_PARSER = BigDecimal::new;
 
-	@Tool("Returns the computation of the mathematical expression. It handles addition, substraction, multiplication and division. It does handle parenthesis. It can be used to compute amount, tax values, etc. Example, you can compute '2 + 2' or '(2 + 2) * 2'.You can also substract 20% taxes with '100 / 1.2', but be careful to round afterward. ")
+	@Tool("Returns the computation of the mathematical expression. At least 1 operation is mandatory in the expression. It handles addition, substraction, multiplication and division. It does handle parenthesis. It can be used to compute amount, tax values, etc. Example, you can compute '2 + 2' or '(2 + 2) * 2'.You can also substract 20% taxes with '100 / 1.2', but be careful to round afterward. ")
 	public BigDecimal compute(@P("The mathematical expression to compute") final String expression) throws PegNoMatchFoundException {
 		return evaluate(expression);
 	}
@@ -26,7 +26,7 @@ public class Lc4jTools {
 	/**
 	 * '(amount * taxRate) / (1 + taxRate)'
 	 */
-	@Tool("Returns the tax from an amont including taxes.")
+	@Tool("Returns the tax from an amount including taxes.")
 	public BigDecimal computeTax(@P("The amount including taxes") final BigDecimal amount, @P("The percentage of taxes, eg 0.20 for 20%") final BigDecimal taxPercentage)
 			throws PegNoMatchFoundException {
 		return evaluate("(" + amount + " * " + taxPercentage + ") / (1 + " + taxPercentage + ")");
