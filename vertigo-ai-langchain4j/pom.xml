@@ -36,6 +36,11 @@
 			<artifactId>vertigo-datastore</artifactId>
 			<version>${vertigo.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>io.vertigo</groupId>
+			<artifactId>vertigo-vega</artifactId>
+			<version>${vertigo.version}</version>
+		</dependency>
 		
 		<dependency>
             <groupId>dev.langchain4j</groupId>
