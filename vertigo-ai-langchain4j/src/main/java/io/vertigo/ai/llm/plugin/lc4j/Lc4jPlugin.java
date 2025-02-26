@@ -31,14 +31,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import io.vertigo.ai.llm.LlmPlugin;
 import io.vertigo.ai.llm.model.LlmChat;
-import io.vertigo.ai.llm.model.VLlmResult;
+import io.vertigo.ai.llm.model.VLlmMessage;
 import io.vertigo.ai.llm.model.VPrompt;
 import io.vertigo.ai.llm.model.VPromptContext;
 import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
@@ -58,7 +60,7 @@ import io.vertigo.vega.engines.webservice.json.JsonEngine;
 public final class Lc4jPlugin implements LlmPlugin {
 
 	private final ChatLanguageModel chatModel;
-	//private final StreamingChatLanguageModel chatModelStream;
+	private final StreamingChatLanguageModel chatModelStream;
 
 	private final ServiceOutputParser serviceOutputParser = new VServiceOutputParser();
 
@@ -77,16 +79,16 @@ public final class Lc4jPlugin implements LlmPlugin {
 				.temperature(0d)
 				.build();
 
-		//		chatModelStream = OpenAiStreamingChatModel.builder()
-		//				.apiKey(apiKey)
-		//				.modelName("gpt-4o-mini")
-		//				.temperature(0d)
-		//				.build();
+		chatModelStream = OpenAiStreamingChatModel.builder()
+				.apiKey(apiKey)
+				.modelName("gpt-4o-mini")
+				.temperature(0d)
+				.build();
 
 	}
 
 	@Override
-	public VLlmResult askOnFiles(final VPrompt prompt, final Stream<VFile> files) {
+	public VLlmMessage askOnFiles(final VPrompt prompt, final Stream<VFile> files) {
 		final List<Document> documents = files
 				.map(VFileDocumentLoader::loadDocument)
 				.toList();
@@ -110,7 +112,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 			throw new VSystemException(e, e.getMessage());
 		}
 
-		return new Lc4jResult(llmResponse);
+		return new Lc4jMessage(llmResponse);
 	}
 
 	@Override
@@ -133,7 +135,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 
 	@Override
 	public LlmChat newChat(final Stream<VFile> files, final VPromptContext context) {
-		return new Lc4jChat(files.toList(), chatModel, context);
+		return new Lc4jChat(files.toList(), chatModel, chatModelStream, context);
 	}
 
 	public static class VServiceOutputParser extends ServiceOutputParser {

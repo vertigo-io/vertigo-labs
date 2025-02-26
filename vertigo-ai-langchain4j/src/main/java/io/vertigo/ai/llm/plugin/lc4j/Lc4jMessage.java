@@ -9,16 +9,17 @@ import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.renderer.text.TextContentRenderer;
 
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.Result;
-import io.vertigo.ai.llm.model.VLlmResult;
+import io.vertigo.ai.llm.model.VLlmMessage;
 
 /**
  * Result of a langchain4j query.
  *
- * @see VLlmResult
+ * @see VLlmMessage
  * @author skerdudou
  */
-public class Lc4jResult implements VLlmResult {
+public class Lc4jMessage implements VLlmMessage {
 	private static final List<Extension> EXTENSIONS = List.of(TablesExtension.create());
 	private static final Parser MD_PARSER = Parser.builder()
 			.extensions(EXTENSIONS)
@@ -30,9 +31,19 @@ public class Lc4jResult implements VLlmResult {
 	private static final TextContentRenderer TEXT_RENDERER = TextContentRenderer.builder().build();
 
 	private final Result<String> result;
+	private final String text;
+	private final List<Content> sources;
 
-	public Lc4jResult(final Result<String> result) {
+	public Lc4jMessage(final Result<String> result) {
 		this.result = result;
+		text = result.content();
+		sources = result.sources();
+	}
+
+	public Lc4jMessage(final String text, final List<Content> sources) {
+		result = null;
+		this.text = text;
+		this.sources = sources;
 	}
 
 	@Override
@@ -43,7 +54,7 @@ public class Lc4jResult implements VLlmResult {
 
 	@Override
 	public String getMarkdown() {
-		return result.content();
+		return text;
 	}
 
 	@Override
@@ -54,7 +65,7 @@ public class Lc4jResult implements VLlmResult {
 
 	@Override
 	public List<String> getSources() {
-		return result.sources().stream()
+		return sources.stream()
 				.map(s -> s.textSegment().metadata().getString("file_name"))
 				.distinct()
 				.toList();
