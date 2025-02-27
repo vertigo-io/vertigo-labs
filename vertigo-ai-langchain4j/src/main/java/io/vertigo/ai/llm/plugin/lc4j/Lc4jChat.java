@@ -1,5 +1,6 @@
 package io.vertigo.ai.llm.plugin.lc4j;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class Lc4jChat extends LlmChat {
 				.map(VFileDocumentLoader::loadDocument)
 				.toList();
 
-		final var chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+		final var chatMemory = MessageWindowChatMemory.withMaxMessages(25);
 		final var persona = context.getPersona();
 		if (persona != null) {
 			chatMemory.add(Lc4jUtils.getSystemMessageFromPersona(persona));
@@ -73,11 +74,18 @@ public class Lc4jChat extends LlmChat {
 		final StringBuilder messageAccumulator = new StringBuilder();
 		final List<Content> sources = new ArrayList<>();
 
+		final var valueHolder = new Object() {
+			Instant lastTokenTime = Instant.now();
+		}; // using an holder to be able to change the value inside the lambda as Instant is immutable
 		assistantStream.rawAnswerStream(instructions)
 				.onNext(token -> {
 					messageAccumulator.append(token);
-					streamConfig.tokenHandler().accept(token);
-					streamConfig.partialMessageHandler().accept(new Lc4jMessage(messageAccumulator.toString(), sources));
+					final var now = Instant.now();
+					if (now.minusMillis(streamConfig.throttleMs()).isAfter(valueHolder.lastTokenTime)) {
+						valueHolder.lastTokenTime = now;
+						streamConfig.tokenHandler().accept(token);
+						streamConfig.partialMessageHandler().accept(new Lc4jMessage(messageAccumulator.toString(), sources));
+					}
 				})
 				.onComplete(response -> {
 					// as langchain4j 0.36.2 (or 1.0-beta1), response is only the last response after tool executions and not the full conversation, so we return what we have accumulated from onNext
