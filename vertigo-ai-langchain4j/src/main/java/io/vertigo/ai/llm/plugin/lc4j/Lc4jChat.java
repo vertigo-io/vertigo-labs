@@ -4,56 +4,55 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
-import io.vertigo.ai.llm.model.LlmChat;
+import io.vertigo.ai.impl.llm.LlmStandardChat;
 import io.vertigo.ai.llm.model.VLlmMessage;
 import io.vertigo.ai.llm.model.VLlmMessageStreamConfig;
 import io.vertigo.ai.llm.model.VPromptContext;
-import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
-import io.vertigo.ai.llm.plugin.lc4j.document.VFileDocumentLoader;
+import io.vertigo.ai.llm.model.rag.VLlmDocumentSource;
+import io.vertigo.ai.llm.plugin.lc4j.rag.Lc4jDocumentSource;
+import io.vertigo.core.lang.Assertion;
 import io.vertigo.core.lang.VSystemException;
-import io.vertigo.datastore.filestore.model.VFile;
 
-public class Lc4jChat extends LlmChat {
+public class Lc4jChat extends LlmStandardChat {
 
 	private final Assistant assistant;
 	private final AssistantStream assistantStream;
 
-	protected Lc4jChat(final List<VFile> files, final ChatLanguageModel chatModel, final StreamingChatLanguageModel chatModelStream, final VPromptContext context) {
-		super(files, context);
-
-		final List<Document> documents = files.stream()
-				.map(VFileDocumentLoader::loadDocument)
-				.toList();
+	protected Lc4jChat(final VLlmDocumentSource documentSource, final ChatLanguageModel chatModel, final StreamingChatLanguageModel chatModelStream, final VPromptContext context) {
+		super(documentSource, context);
 
 		final var chatMemory = MessageWindowChatMemory.withMaxMessages(25);
-		final var persona = context.getPersona();
-		if (persona != null) {
-			chatMemory.add(Lc4jUtils.getSystemMessageFromPersona(persona));
-		}
+		Lc4jUtils.getSystemMessageFromContext(context)
+				.ifPresent(chatMemory::add);
+
+		final var lc4jTools = new Lc4jTools();
 
 		final var assistantBuilder = AiServices.builder(Assistant.class)
 				.chatLanguageModel(chatModel)
 				.chatMemory(chatMemory)
-				.tools(new Lc4jTools());
-		if (!documents.isEmpty()) {
-			assistantBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
-		}
-		assistant = assistantBuilder.build();
-
+				.tools(lc4jTools);
 		final var assistantStreamBuilder = AiServices.builder(AssistantStream.class)
 				.streamingChatLanguageModel(chatModelStream)
 				.chatMemory(chatMemory)
-				.tools(new Lc4jTools());
-		if (!documents.isEmpty()) {
-			assistantStreamBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
+				.tools(lc4jTools);
+
+		if (documentSource != null && !documentSource.isEmpty()) {
+			Assertion.check()
+					.isTrue(documentSource instanceof Lc4jDocumentSource, "Only Lc4jDocumentSource is supported");
+
+			// add access to our documents
+			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(10, 0.5d);
+			assistantBuilder.contentRetriever(contentRetriever);
+			assistantStreamBuilder.contentRetriever(contentRetriever);
 		}
+
+		assistant = assistantBuilder.build();
 		assistantStream = assistantStreamBuilder.build();
 	}
 

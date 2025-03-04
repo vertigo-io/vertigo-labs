@@ -19,14 +19,12 @@ package io.vertigo.ai.llm.plugin.lc4j;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -38,18 +36,20 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import io.vertigo.ai.llm.LlmChat;
 import io.vertigo.ai.llm.LlmPlugin;
-import io.vertigo.ai.llm.model.LlmChat;
 import io.vertigo.ai.llm.model.VLlmMessage;
 import io.vertigo.ai.llm.model.VPrompt;
 import io.vertigo.ai.llm.model.VPromptContext;
-import io.vertigo.ai.llm.plugin.lc4j.document.Lc4jDocumentUtil;
-import io.vertigo.ai.llm.plugin.lc4j.document.VFileDocumentLoader;
+import io.vertigo.ai.llm.model.rag.VLlmDocumentSource;
+import io.vertigo.ai.llm.plugin.lc4j.rag.Lc4jDocumentSource;
+import io.vertigo.ai.llm.plugin.lc4j.rag.Lc4jInMemoryDocumentSource;
+import io.vertigo.ai.llm.plugin.lc4j.rag.embedding.Lc4jEmbeddingPlugin;
+import io.vertigo.ai.llm.plugin.lc4j.rag.storage.Lc4jStoragePlugin;
 import io.vertigo.core.lang.Assertion;
 import io.vertigo.core.lang.VSystemException;
 import io.vertigo.core.node.Node;
 import io.vertigo.core.param.ParamValue;
-import io.vertigo.datastore.filestore.model.VFile;
 import io.vertigo.vega.engines.webservice.json.JsonEngine;
 
 /**
@@ -63,10 +63,14 @@ public final class Lc4jPlugin implements LlmPlugin {
 	private final StreamingChatLanguageModel chatModelStream;
 
 	private final ServiceOutputParser serviceOutputParser = new VServiceOutputParser();
+	private final Lc4jEmbeddingPlugin embeddingPlugin;
+	private final Optional<Lc4jStoragePlugin> storagePlugin;
 
 	@Inject
 	public Lc4jPlugin(
-			@ParamValue("apiKey") final String apiKey) {
+			@ParamValue("apiKey") final String apiKey,
+			final Lc4jEmbeddingPlugin embeddingPlugin,
+			final Optional<Lc4jStoragePlugin> storagePlugin) {
 
 		Assertion.check()
 				.isNotBlank(apiKey); // langchain4j can use "demo" api key with a 5000 tokens limit (with langchain4j server acting as a proxy)
@@ -85,23 +89,26 @@ public final class Lc4jPlugin implements LlmPlugin {
 				.temperature(0d)
 				.build();
 
+		this.embeddingPlugin = embeddingPlugin;
+		this.storagePlugin = storagePlugin;
 	}
 
 	@Override
-	public VLlmMessage askOnFiles(final VPrompt prompt, final Stream<VFile> files) {
-		final List<Document> documents = files
-				.map(VFileDocumentLoader::loadDocument)
-				.toList();
-
+	public VLlmMessage askOnFiles(final VPrompt prompt, final VLlmDocumentSource documentSource) {
 		final var assistantBuilder = AiServices.builder(Assistant.class)
 				.chatLanguageModel(chatModel);
 
 		final var context = prompt.getContext();
-		if (context.getPersona() != null) {
-			assistantBuilder.systemMessageProvider(s -> Lc4jUtils.getSystemMessageFromPersona(context.getPersona()).text());
-		}
-		if (!documents.isEmpty()) {
-			assistantBuilder.contentRetriever(Lc4jDocumentUtil.createContentRetriever(documents)); // it should have access to our documents
+		Lc4jUtils.getSystemMessageFromContext(context)
+				.ifPresent(systemMessage -> assistantBuilder.systemMessageProvider(memId -> systemMessage.text()));
+
+		if (documentSource != null && !documentSource.isEmpty()) {
+			Assertion.check()
+					.isTrue(documentSource instanceof Lc4jDocumentSource, "Only Lc4jDocumentSource is supported");
+
+			// add access to our documents
+			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(10, 0.5d);
+			assistantBuilder.contentRetriever(contentRetriever);
 		}
 		final Assistant assistant = assistantBuilder.build();
 
@@ -120,9 +127,8 @@ public final class Lc4jPlugin implements LlmPlugin {
 		final var chatMessages = new ArrayList<ChatMessage>();
 		final var context = prompt.getContext();
 
-		if (context.getPersona() != null) {
-			chatMessages.add(Lc4jUtils.getSystemMessageFromPersona(context.getPersona()));
-		}
+		Lc4jUtils.getSystemMessageFromContext(context)
+				.ifPresent(chatMessages::add);
 
 		// append additional instructions as in dev.langchain4j.service.DefaultAiServices
 		// don't know why it is not done in the system message
@@ -134,8 +140,8 @@ public final class Lc4jPlugin implements LlmPlugin {
 	}
 
 	@Override
-	public LlmChat newChat(final Stream<VFile> files, final VPromptContext context) {
-		return new Lc4jChat(files.toList(), chatModel, chatModelStream, context);
+	public LlmChat newChat(final VLlmDocumentSource documentSource, final VPromptContext context) {
+		return new Lc4jChat(documentSource, chatModel, chatModelStream, context);
 	}
 
 	public static class VServiceOutputParser extends ServiceOutputParser {
@@ -178,5 +184,17 @@ public final class Lc4jPlugin implements LlmPlugin {
 			return text;
 		}
 
+	}
+
+	@Override
+	public VLlmDocumentSource getPersistedDocumentSource() {
+		return storagePlugin
+				.orElseThrow(() -> new VSystemException("No persisted document source configured"))
+				.getDocumentSource();
+	}
+
+	@Override
+	public VLlmDocumentSource getTemporaryDocumentSource() {
+		return new Lc4jInMemoryDocumentSource(embeddingPlugin.getEmbeddingModel());
 	}
 }

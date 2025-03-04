@@ -1,4 +1,4 @@
-package io.vertigo.ai.llm.plugin.lc4j.document;
+package io.vertigo.ai.llm.plugin.lc4j.rag;
 
 import java.util.Collection;
 
@@ -10,8 +10,11 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.data.document.parser.DocumentParserFactory;
+import io.vertigo.ai.impl.llm.LlmManagerImpl;
+import io.vertigo.ai.llm.model.rag.VLlmDocument;
+import io.vertigo.core.analytics.AnalyticsManager;
 import io.vertigo.core.lang.VSystemException;
-import io.vertigo.datastore.filestore.model.VFile;
+import io.vertigo.core.node.Node;
 
 public final class VFileDocumentLoader {
 	private static final DocumentParser DEFAULT_DOCUMENT_PARSER = Utils.getOrDefault(loadDocumentParser(), TextDocumentParser::new);
@@ -19,12 +22,17 @@ public final class VFileDocumentLoader {
 	private VFileDocumentLoader() {
 	}
 
-	public static Document loadDocument(final VFile vFile) {
-		try {
-			return DocumentLoader.load(new VFileDocumentSource(vFile), DEFAULT_DOCUMENT_PARSER);
-		} catch (final BlankDocumentException e) {
-			return new Document("Le fichier ne contient pas de texte.");
-		}
+	public static Document loadDocument(final VLlmDocument document) {
+		return getAnalyticsManager().traceWithReturn(LlmManagerImpl.LLM_CATEGORY, "readFile",
+				t -> {
+					try {
+						t.setTag("isEmpty", "false");
+						return DocumentLoader.load(new VFileDocumentSource(document.fileInfo().getVFile(), document.metadatas()), DEFAULT_DOCUMENT_PARSER);
+					} catch (final BlankDocumentException e) {
+						t.setTag("isEmpty", "true");
+						return null;
+					}
+				});
 	}
 
 	private static DocumentParser loadDocumentParser() {
@@ -41,5 +49,9 @@ public final class VFileDocumentLoader {
 		}
 
 		return null;
+	}
+
+	private static AnalyticsManager getAnalyticsManager() {
+		return Node.getNode().getComponentSpace().resolve(AnalyticsManager.class);
 	}
 }
