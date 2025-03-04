@@ -4,7 +4,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.rag.content.Content;
@@ -24,10 +25,12 @@ public class Lc4jChat extends LlmStandardChat {
 	private final Assistant assistant;
 	private final AssistantStream assistantStream;
 
-	protected Lc4jChat(final VLlmDocumentSource documentSource, final ChatLanguageModel chatModel, final StreamingChatLanguageModel chatModelStream, final VPromptContext context) {
+	protected Lc4jChat(final VLlmDocumentSource documentSource, final VPromptContext context,
+			final ChatLanguageModel chatModel, final StreamingChatLanguageModel chatModelStream, final Tokenizer tokenizer) {
 		super(documentSource, context);
 
-		final var chatMemory = MessageWindowChatMemory.withMaxMessages(25);
+		final var chatMemory = TokenWindowChatMemory.withMaxTokens(4000, tokenizer);
+
 		Lc4jUtils.getSystemMessageFromContext(context)
 				.ifPresent(chatMemory::add);
 

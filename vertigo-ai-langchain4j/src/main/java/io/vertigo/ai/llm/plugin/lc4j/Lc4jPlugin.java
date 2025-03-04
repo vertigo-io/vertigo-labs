@@ -25,13 +25,18 @@ import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -48,6 +53,7 @@ import io.vertigo.ai.llm.plugin.lc4j.rag.embedding.Lc4jEmbeddingPlugin;
 import io.vertigo.ai.llm.plugin.lc4j.rag.storage.Lc4jStoragePlugin;
 import io.vertigo.core.lang.Assertion;
 import io.vertigo.core.lang.VSystemException;
+import io.vertigo.core.lang.VUserException;
 import io.vertigo.core.node.Node;
 import io.vertigo.core.param.ParamValue;
 import io.vertigo.vega.engines.webservice.json.JsonEngine;
@@ -58,7 +64,10 @@ import io.vertigo.vega.engines.webservice.json.JsonEngine;
  * @author skerdudou
  */
 public final class Lc4jPlugin implements LlmPlugin {
+	private static final Logger LOG = LogManager.getLogger(Lc4jPlugin.class);
 
+	private final String modelName;
+	private final Tokenizer tokenizer;
 	private final ChatLanguageModel chatModel;
 	private final StreamingChatLanguageModel chatModelStream;
 
@@ -69,23 +78,29 @@ public final class Lc4jPlugin implements LlmPlugin {
 	@Inject
 	public Lc4jPlugin(
 			@ParamValue("apiKey") final String apiKey,
+			@ParamValue("modelName") final Optional<String> modelNameOpt,
+			@ParamValue("url") final Optional<String> urlOpt,
 			final Lc4jEmbeddingPlugin embeddingPlugin,
 			final Optional<Lc4jStoragePlugin> storagePlugin) {
 
 		Assertion.check()
 				.isNotBlank(apiKey); // langchain4j can use "demo" api key with a 5000 tokens limit (with langchain4j server acting as a proxy)
 		//---
+		modelName = modelNameOpt.orElse("gpt-4o-mini");
+
+		tokenizer = new OpenAiTokenizer(modelName);
+
 		chatModel = OpenAiChatModel.builder()
-				//.baseUrl("http://albert.dev.klee.lan.net:8000/v1")
+				.baseUrl(urlOpt.orElse(null)) // null => default url
 				.apiKey(apiKey)
-				//.modelName("turbo")
-				.modelName("gpt-4o-mini")
+				.modelName(modelName)
 				.temperature(0d)
 				.build();
 
 		chatModelStream = OpenAiStreamingChatModel.builder()
+				.baseUrl(urlOpt.orElse(null)) // null => default url
 				.apiKey(apiKey)
-				.modelName("gpt-4o-mini")
+				.modelName(modelName)
 				.temperature(0d)
 				.build();
 
@@ -141,7 +156,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 
 	@Override
 	public LlmChat newChat(final VLlmDocumentSource documentSource, final VPromptContext context) {
-		return new Lc4jChat(documentSource, chatModel, chatModelStream, context);
+		return new Lc4jChat(documentSource, context, chatModel, chatModelStream, tokenizer);
 	}
 
 	public static class VServiceOutputParser extends ServiceOutputParser {
@@ -151,13 +166,14 @@ public final class Lc4jPlugin implements LlmPlugin {
 		public String outputFormatInstructions(final Type returnType) {
 			if ("io.vertigo.ai.impl.llm.FacetPromptUtil$FacetPromptResult".equals(returnType.getTypeName())) {
 				return """
-						You must answer strictly in the following JSON format: {
-						"selectedFacetValues": {
+						You must answer strictly in the following JSON format:
+						{
+						 "selectedFacetValues": {
 						  "__facetDefinitionId__": ["__facetValueCode__", "__facetValueCode2__", ...],
 						  "__facetDefinitionId2__": ["__facetValueCode3__"],
 						  ...
-						}(type: java.util.Map<String, List<String>>),
-						"criteria": (type: string)
+						 }(type: java.util.Map<String, List<String>>),
+						 "criteria": (type: string)
 						}
 						""";
 			}
@@ -171,8 +187,13 @@ public final class Lc4jPlugin implements LlmPlugin {
 			try {
 				return jsonEngine.fromJson(text, returnType);
 			} catch (final Exception e) {
-				final String jsonBlock = extractJsonBlock(text);
-				return jsonEngine.fromJson(jsonBlock, returnType);
+				try {
+					final String jsonBlock = extractJsonBlock(text);
+					return jsonEngine.fromJson(jsonBlock, returnType);
+				} catch (final Exception e2) {
+					LOG.warn("Error while parsing JSON response from the LLM: {}", text);
+					throw new VUserException("The request have not been understood by the system.");
+				}
 			}
 		}
 
