@@ -3,6 +3,7 @@ package io.vertigo.ai.llm.plugin.lc4j;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.Tokenizer;
@@ -25,7 +26,7 @@ public class Lc4jChat extends LlmStandardChat {
 	private final Assistant assistant;
 	private final AssistantStream assistantStream;
 
-	protected Lc4jChat(final VLlmDocumentSource documentSource, final VPromptContext context,
+	protected Lc4jChat(final VLlmDocumentSource documentSource, final Map<String, Object> metadataFilter, final VPromptContext context,
 			final ChatLanguageModel chatModel, final StreamingChatLanguageModel chatModelStream, final Tokenizer tokenizer) {
 		super(documentSource, context);
 
@@ -50,7 +51,7 @@ public class Lc4jChat extends LlmStandardChat {
 					.isTrue(documentSource instanceof Lc4jDocumentSource, "Only Lc4jDocumentSource is supported");
 
 			// add access to our documents
-			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(10, 0.5d);
+			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(metadataFilter, 10, 0.5d);
 			assistantBuilder.contentRetriever(contentRetriever);
 			assistantStreamBuilder.contentRetriever(contentRetriever);
 		}

@@ -3,8 +3,8 @@ package io.vertigo.ai.llm.plugin.lc4j.rag;
 import java.util.HashMap;
 import java.util.Map;
 
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import io.vertigo.ai.llm.model.rag.VLlmDocument;
 import io.vertigo.datastore.filestore.model.FileInfoURI;
@@ -33,8 +33,8 @@ public class Lc4jInMemoryDocumentSource extends Lc4jDocumentSource {
 	}
 
 	@Override
-	protected VLlmDocument retreriveDocument(final Content content) {
-		return docMap.get(content.textSegment().metadata().getString(FILE_URN_METADATA));
+	protected VLlmDocument retreriveDocument(final TextSegment segment) {
+		return docMap.get(segment.metadata().getString(FILE_URN_METADATA));
 	}
 
 	@Override

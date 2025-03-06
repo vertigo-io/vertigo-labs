@@ -19,6 +19,7 @@ package io.vertigo.ai.llm.plugin.lc4j;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -109,7 +110,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 	}
 
 	@Override
-	public VLlmMessage askOnFiles(final VPrompt prompt, final VLlmDocumentSource documentSource) {
+	public VLlmMessage askOnFiles(final VPrompt prompt, final VLlmDocumentSource documentSource, final Map<String, Object> metadataFilter) {
 		final var assistantBuilder = AiServices.builder(Assistant.class)
 				.chatLanguageModel(chatModel);
 
@@ -122,7 +123,7 @@ public final class Lc4jPlugin implements LlmPlugin {
 					.isTrue(documentSource instanceof Lc4jDocumentSource, "Only Lc4jDocumentSource is supported");
 
 			// add access to our documents
-			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(10, 0.5d);
+			final var contentRetriever = ((Lc4jDocumentSource) documentSource).getContentRetriever(metadataFilter, 10, 0.5d);
 			assistantBuilder.contentRetriever(contentRetriever);
 		}
 		final Assistant assistant = assistantBuilder.build();
@@ -155,8 +156,8 @@ public final class Lc4jPlugin implements LlmPlugin {
 	}
 
 	@Override
-	public LlmChat newChat(final VLlmDocumentSource documentSource, final VPromptContext context) {
-		return new Lc4jChat(documentSource, context, chatModel, chatModelStream, tokenizer);
+	public LlmChat newChat(final VLlmDocumentSource documentSource, final Map<String, Object> metadataFilter, final VPromptContext context) {
+		return new Lc4jChat(documentSource, metadataFilter, context, chatModel, chatModelStream, tokenizer);
 	}
 
 	public static class VServiceOutputParser extends ServiceOutputParser {
