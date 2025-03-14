@@ -17,15 +17,18 @@
  */
 package io.vertigo.ai.llm.plugin.lc4j.rag.storage;
 
+import java.io.PrintWriter;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
-import javax.naming.NamingException;
 import javax.sql.DataSource;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -35,8 +38,11 @@ import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import io.vertigo.ai.llm.model.rag.VLlmDocumentSource;
 import io.vertigo.ai.llm.plugin.lc4j.rag.embedding.Lc4jEmbeddingPlugin;
 import io.vertigo.core.lang.Assertion;
+import io.vertigo.core.lang.VSystemException;
 import io.vertigo.core.lang.WrappedException;
 import io.vertigo.core.param.ParamValue;
+import io.vertigo.database.impl.sql.SqlConnectionProviderPlugin;
+import io.vertigo.datastore.entitystore.EntityStoreManager;
 import io.vertigo.datastore.filestore.FileStoreManager;
 import io.vertigo.datastore.filestore.model.FileInfoURI;
 
@@ -47,7 +53,7 @@ import io.vertigo.datastore.filestore.model.FileInfoURI;
  */
 public final class Lc4jPgVectorStoragePlugin implements Lc4jStoragePlugin {
 
-	private DataSource dataSource;
+	private final DataSource dataSource;
 	private final String tableName;
 	private final boolean isJsonbStorage;
 	private final Lc4jPgVectorDocumentSource documentSource;
@@ -55,26 +61,27 @@ public final class Lc4jPgVectorStoragePlugin implements Lc4jStoragePlugin {
 
 	@Inject
 	public Lc4jPgVectorStoragePlugin(
-			@ParamValue("source") final String source,
+			@ParamValue("dataSpace") final Optional<String> optDataSpace,
 			@ParamValue("tableName") final Optional<String> tableNameOpt,
 			@ParamValue("metadataColumns") final Optional<String> metadataColumnsString,
 			@ParamValue("createTable") final Optional<Boolean> createTable,
 			@ParamValue("dropTableFirst") final Optional<Boolean> dropTableFirst,
 			final Lc4jEmbeddingPlugin embeddingPlugin,
-			final FileStoreManager fileStoreManager) {
+			final FileStoreManager fileStoreManager,
+			final List<SqlConnectionProviderPlugin> sqlConnectionProviderPlugins) {
 
 		Assertion.check()
-				.isNotBlank(source)
 				.isNotNull(embeddingPlugin)
 				.isNotNull(fileStoreManager);
 		//---
 		final List<String> metadataColumns = metadataColumnsString.map(s -> List.of(s.split(";"))).orElse(Collections.emptyList());
-		try {
-			final javax.naming.Context context = new javax.naming.InitialContext();
-			dataSource = (DataSource) context.lookup(source);
-		} catch (final NamingException e) {
-			throw WrappedException.wrap(e, "Can't obtain DataSource : {0}", source);
-		}
+
+		final var dataSpace = optDataSpace.orElse(EntityStoreManager.MAIN_DATA_SPACE_NAME);
+		final var sqlProvider = sqlConnectionProviderPlugins.stream()
+				.filter(p -> p.getName().equals(dataSpace))
+				.findAny()
+				.orElseThrow(() -> new VSystemException("No connection provider found for dataSpace : {0}", dataSpace));
+		dataSource = new DatasourceAdapter(sqlProvider);
 
 		embeddingModel = embeddingPlugin.getEmbeddingModel();
 
@@ -153,5 +160,67 @@ public final class Lc4jPgVectorStoragePlugin implements Lc4jStoragePlugin {
 	}
 
 	public static record VDocumentInfo(FileInfoURI fileInfoURI, String fileName, Long chunkCount) {
+	}
+
+	/**
+	 * Workaround to use Vertigo connection provider in Lc4j.
+	 */
+	private static class DatasourceAdapter implements DataSource {
+
+		private final SqlConnectionProviderPlugin sqlConnectionProviderPlugin;
+
+		public DatasourceAdapter(final SqlConnectionProviderPlugin sqlConnectionProviderPlugin) {
+			this.sqlConnectionProviderPlugin = sqlConnectionProviderPlugin;
+		}
+
+		@Override
+		public Connection getConnection() throws SQLException {
+			final var jdbcConnection = sqlConnectionProviderPlugin.obtainConnection().getJdbcConnection();
+			// Lc4j do not commit and is closing the connection, vertigo disable autocomit (which is desirable).
+			// If we want to avoid auto commit, we need to wrap the connection in order to wire it's lifecycle to the VTransactionManager.
+			jdbcConnection.setAutoCommit(true);
+			return jdbcConnection;
+		}
+
+		@Override
+		public Connection getConnection(final String username, final String password) throws SQLException {
+			return getConnection();
+		}
+
+		@Override
+		public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public <T> T unwrap(final Class<T> iface) throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public PrintWriter getLogWriter() throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setLogWriter(final PrintWriter out) throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setLoginTimeout(final int seconds) throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public int getLoginTimeout() throws SQLException {
+			throw new UnsupportedOperationException();
+		}
+
 	}
 }
