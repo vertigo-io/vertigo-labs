@@ -7,16 +7,18 @@
 	<parent>
 		<groupId>io.vertigo</groupId>
 		<artifactId>vertigo-parent</artifactId>
-		<version>4.3.0-SNAPSHOT</version>
+		<version>4.3.0</version>
 	</parent>
 
 	<artifactId>vertigo-ai-langchain4j</artifactId>
 	<packaging>jar</packaging>
 	<name>vertigo-ai-langchain4j</name>
+	<version>4.3.0-SNAPSHOT</version>
 	
 	<properties>
 		<lc4j.version>0.36.2</lc4j.version>
 		<commonmark.version>0.24.0</commonmark.version>
+		<vertigo-ai.version>4.3.0-SNAPSHOT</vertigo-ai.version>
 	</properties>
 
 	<dependencies>
@@ -30,7 +32,7 @@
 		<dependency>
 			<groupId>io.vertigo</groupId>
 			<artifactId>vertigo-ai</artifactId>
-			<version>${vertigo.version}</version>
+			<version>${vertigo-ai.version}</version>
 		</dependency>
 		
 		<dependency>
