@@ -19,6 +19,7 @@ package io.vertigo.ai.llm.plugin.lc4j;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -186,11 +187,11 @@ public final class Lc4jPlugin implements LlmPlugin {
 			final var jsonEngine = Node.getNode().getComponentSpace().resolve(JsonEngine.class);
 			final var text = response.content().text();
 			try {
-				return jsonEngine.fromJson(text, returnType);
+				return jsonEngine.fromJson(text, returnType, Collections.emptySet(), Collections.emptySet());
 			} catch (final Exception e) {
 				try {
 					final String jsonBlock = extractJsonBlock(text);
-					return jsonEngine.fromJson(jsonBlock, returnType);
+					return jsonEngine.fromJson(jsonBlock, returnType, Collections.emptySet(), Collections.emptySet());
 				} catch (final Exception e2) {
 					LOG.warn("Error while parsing JSON response from the LLM: {}", text);
 					throw new VUserException("The request have not been understood by the system.");
