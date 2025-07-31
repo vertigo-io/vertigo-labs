@@ -31,6 +31,8 @@ public final class VFileDocumentLoader {
 					} catch (final BlankDocumentException e) {
 						t.setTag("isEmpty", "true");
 						return null;
+					} catch (final Exception e) {
+						throw new VSystemException("Unable to read text from the document: " + document.fileInfo().getURI(), e);
 					}
 				});
 	}

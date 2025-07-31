@@ -36,6 +36,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.embedding.onnx.HuggingFaceTokenizer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
@@ -79,32 +82,67 @@ public final class Lc4jPlugin implements LlmPlugin {
 
 	@Inject
 	public Lc4jPlugin(
-			@ParamValue("apiKey") final String apiKey,
+			@ParamValue("apiKey") final Optional<String> apiKeyOpt,
 			@ParamValue("modelName") final Optional<String> modelNameOpt,
 			@ParamValue("url") final Optional<String> urlOpt,
+			@ParamValue("apiType") final Optional<String> apiTypeOpt,
 			final Lc4jEmbeddingPlugin embeddingPlugin,
 			final Optional<Lc4jStoragePlugin> storagePlugin) {
 
-		Assertion.check()
-				.isNotBlank(apiKey); // langchain4j can use "demo" api key with a 5000 tokens limit (with langchain4j server acting as a proxy)
 		//---
-		modelName = modelNameOpt.orElse("gpt-4o-mini");
+		final var apiType = apiTypeOpt.orElse("openai");
 
-		tokenizer = new OpenAiTokenizer(modelName);
+		switch (apiType.toLowerCase()) {
+			case "openai" -> {
+				Assertion.check()
+						.isTrue(apiKeyOpt.isPresent(), "OpenAI API Key must be provided")
+						.isNotBlank(apiKeyOpt.get()); // langchain4j can use "demo" api key with a 5000 tokens limit (with langchain4j server acting as a proxy)
+				// --
 
-		chatModel = OpenAiChatModel.builder()
-				.baseUrl(urlOpt.orElse(null)) // null => default url
-				.apiKey(apiKey)
-				.modelName(modelName)
-				.temperature(0d)
-				.build();
+				modelName = modelNameOpt.orElse("gpt-4o-mini");
 
-		chatModelStream = OpenAiStreamingChatModel.builder()
-				.baseUrl(urlOpt.orElse(null)) // null => default url
-				.apiKey(apiKey)
-				.modelName(modelName)
-				.temperature(0d)
-				.build();
+				tokenizer = new OpenAiTokenizer(modelName);
+
+				chatModel = OpenAiChatModel.builder()
+						.baseUrl(urlOpt.orElse(null)) // null => default url
+						.apiKey(apiKeyOpt.get())
+						.modelName(modelName)
+						.temperature(0d)
+						.build();
+
+				chatModelStream = OpenAiStreamingChatModel.builder()
+						.baseUrl(urlOpt.orElse(null)) // null => default url
+						.apiKey(apiKeyOpt.get())
+						.modelName(modelName)
+						.temperature(0d)
+						.build();
+			}
+			case "ollama" -> {
+				modelName = modelNameOpt.orElse("qwen2.5:7b");
+
+				tokenizer = new HuggingFaceTokenizer(); // Using Bert tokenizer estimation (used only to estimate the number of tokens in the prompt)
+
+				// OpenWebUi uses "Authorization: Bearer YOUR_API_KEY" header to authenticate requests
+				final var customHeaders = apiKeyOpt
+						.map(key -> Map.of("Authorization", "Bearer " + key))
+						.orElseGet(Collections::emptyMap);
+
+				chatModel = OllamaChatModel.builder()
+						.baseUrl(urlOpt.orElse(null)) // null => default url
+						.modelName(modelName)
+						.customHeaders(customHeaders)
+						.temperature(0d)
+						.build();
+
+				chatModelStream = OllamaStreamingChatModel.builder()
+						.baseUrl(urlOpt.orElse(null)) // null => default url
+						.modelName(modelName)
+						.customHeaders(customHeaders)
+						.temperature(0d)
+						.build();
+			}
+			default -> throw new IllegalArgumentException("Unsupported API type: " + apiType);
+		}
 
 		this.embeddingPlugin = embeddingPlugin;
 		this.storagePlugin = storagePlugin;

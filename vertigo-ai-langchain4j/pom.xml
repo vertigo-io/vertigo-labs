@@ -1,53 +1,53 @@
 <?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>io.vertigo</groupId>
-		<artifactId>vertigo-parent</artifactId>
-		<version>4.3.2</version>
-	</parent>
+    <parent>
+        <groupId>io.vertigo</groupId>
+        <artifactId>vertigo-parent</artifactId>
+        <version>4.3.2</version>
+    </parent>
 
-	<artifactId>vertigo-ai-langchain4j</artifactId>
-	<packaging>jar</packaging>
-	<name>vertigo-ai-langchain4j</name>
-	<version>4.3.2-SNAPSHOT</version>
-	
-	<properties>
-		<lc4j.version>0.36.2</lc4j.version>
-		<commonmark.version>0.24.0</commonmark.version>
-		<vertigo-ai.version>4.3.2-SNAPSHOT</vertigo-ai.version>
-	</properties>
+    <artifactId>vertigo-ai-langchain4j</artifactId>
+    <packaging>jar</packaging>
+    <name>vertigo-ai-langchain4j</name>
+    <version>4.3.2-SNAPSHOT</version>
+    
+    <properties>
+        <lc4j.version>0.36.2</lc4j.version>
+        <commonmark.version>0.24.0</commonmark.version>
+        <vertigo-ai.version>4.3.2-SNAPSHOT</vertigo-ai.version>
+    </properties>
 
-	<dependencies>
-		<!-- Vertigo -->
-		<dependency>
-			<groupId>io.vertigo</groupId>
-			<artifactId>vertigo-core</artifactId>
-			<version>${vertigo.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>io.vertigo</groupId>
-			<artifactId>vertigo-ai</artifactId>
-			<version>${vertigo-ai.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>io.vertigo</groupId>
-			<artifactId>vertigo-datastore</artifactId>
-			<version>${vertigo.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.vertigo</groupId>
-			<artifactId>vertigo-vega</artifactId>
-			<version>${vertigo.version}</version>
-		</dependency>
-		
-		<!-- Langchain4j -->
-		<dependency>
+    <dependencies>
+        <!-- Vertigo -->
+        <dependency>
+            <groupId>io.vertigo</groupId>
+            <artifactId>vertigo-core</artifactId>
+            <version>${vertigo.version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>io.vertigo</groupId>
+            <artifactId>vertigo-ai</artifactId>
+            <version>${vertigo-ai.version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>io.vertigo</groupId>
+            <artifactId>vertigo-datastore</artifactId>
+            <version>${vertigo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertigo</groupId>
+            <artifactId>vertigo-vega</artifactId>
+            <version>${vertigo.version}</version>
+        </dependency>
+        
+        <!-- Langchain4j -->
+        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>${lc4j.version}</version>
@@ -56,9 +56,27 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>${lc4j.version}</version>
+            <optional>true</optional>
         </dependency>
         
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-ollama</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings</artifactId>
+            <version>${lc4j.version}</version>
+        </dependency>
+        <dependency> <!-- needed as langchain4j-embeddings needs 2.16 whereas langchain4j-document-parser-apache-tika pulls 2.14 with higher transitive dependencies -->
+        	<groupId>commons-io</groupId>
+        	<artifactId>commons-io</artifactId>
+        	<version>2.16.1</version>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-document-parser-apache-tika</artifactId>
@@ -66,29 +84,58 @@
         </dependency>
 
         <dependency>
-		    <groupId>dev.langchain4j</groupId>
-		    <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-		    <version>${lc4j.version}</version>
-		    <optional>true</optional>
-		</dependency>
-		
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-pgvector</artifactId>
-            <version>${lc4j.version}</version>
+            <optional>true</optional>
         </dependency>
-		
-		<!-- Commonmark -->
-		<dependency>
-		    <groupId>org.commonmark</groupId>
-		    <artifactId>commonmark</artifactId>
-		    <version>${commonmark.version}</version>
-		</dependency>
-		<dependency>
-		    <groupId>org.commonmark</groupId>
-		    <artifactId>commonmark-ext-gfm-tables</artifactId>
-		    <version>${commonmark.version}</version>
-		</dependency>
-	</dependencies>
+        
+        <!-- Commonmark -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+    </dependencies>
+    
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${lc4j.version}</version>
+            </dependency>
+            
+    
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${lc4j.version}</version>
+            </dependency>
+            
+    
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+                <version>${lc4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-pgvector</artifactId>
+                <version>${lc4j.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

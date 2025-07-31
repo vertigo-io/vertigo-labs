@@ -17,33 +17,44 @@
  */
 package io.vertigo.ai.llm.plugin.lc4j.rag.embedding;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModelName;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+import io.vertigo.core.lang.Assertion;
 import io.vertigo.core.param.ParamValue;
 
 /**
- * Plugin to use OpenAi as embedding model
+ * Plugin to use Ollama as embedding model
  *
  * @author skerdudou
  */
-public final class Lc4jOpenAiEmbeddingPlugin implements Lc4jEmbeddingPlugin {
+public final class Lc4jOllamaEmbeddingPlugin implements Lc4jEmbeddingPlugin {
 
 	private final EmbeddingModel embeddingModel;
 
 	@Inject
-	public Lc4jOpenAiEmbeddingPlugin(
-			@ParamValue("apiKey") final String apiKey,
-			@ParamValue("url") final Optional<String> urlOpt) {
+	public Lc4jOllamaEmbeddingPlugin(
+			@ParamValue("url") final String url,
+			@ParamValue("modelName") final Optional<String> modelNameOpt,
+			@ParamValue("apiKey") final Optional<String> apiKeyOpt) {
 
-		embeddingModel = OpenAiEmbeddingModel.builder()
-				.apiKey(apiKey)
-				.baseUrl(urlOpt.orElse(null)) // null => default url
-				.modelName(OpenAiEmbeddingModelName.TEXT_EMBEDDING_3_SMALL) // TODO : make this configurable
+		Assertion.check()
+				.isNotBlank(url);
+		// --
+		// OpenWebUi uses "Authorization: Bearer YOUR_API_KEY" header to authenticate requests
+		final var customHeaders = apiKeyOpt
+				.map(key -> Map.of("Authorization", "Bearer " + key))
+				.orElseGet(Collections::emptyMap);
+
+		embeddingModel = OllamaEmbeddingModel.builder()
+				.baseUrl(url)
+				.modelName(modelNameOpt.orElse("qwen2.5:7b"))
+				.customHeaders(customHeaders)
 				.build();
 	}
 
