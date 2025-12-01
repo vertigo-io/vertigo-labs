@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import javax.sql.DataSource;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;

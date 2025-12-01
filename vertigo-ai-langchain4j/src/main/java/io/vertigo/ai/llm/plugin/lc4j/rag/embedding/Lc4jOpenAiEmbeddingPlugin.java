@@ -19,7 +19,7 @@ package io.vertigo.ai.llm.plugin.lc4j.rag.embedding;
 
 import java.util.Optional;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
