@@ -34,7 +34,7 @@ public class Lc4jTools {
 	}
 
 	private static BigDecimal evaluate(final String expression) throws PegNoMatchFoundException, PegParsingValueException {
-		return (BigDecimal) RULE.parse(expression).getValue().apply(TERM_PARSER);
+		return (BigDecimal) RULE.parse(expression).value().apply(TERM_PARSER);
 	}
 
 }
