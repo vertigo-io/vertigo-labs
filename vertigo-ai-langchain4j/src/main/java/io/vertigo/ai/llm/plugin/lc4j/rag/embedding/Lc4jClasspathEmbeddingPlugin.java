@@ -21,7 +21,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import java.util.Collection;
 
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
